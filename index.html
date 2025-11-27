@@ -212,7 +212,8 @@
     }
 
     .reveal-anim {
-        animation: lineReveal 0.2s cubic-bezier(0.11， 0， 0.5, 0) forwards;
+        /* 修正：逗号必须是英文 , */
+        animation: lineReveal 0.2s cubic-bezier(0.11, 0, 0.5, 0) forwards;
         opacity: 0; 
     }
 
@@ -226,7 +227,8 @@
     }
     #preview-view code {
         background: #222; color: var(--accent); padding: 2px 5px;
-        font-family: 'VT323'， monospace; border: 1px solid #444;
+        /* 修正：逗号必须是英文 , */
+        font-family: 'VT323', monospace; border: 1px solid #444;
     }
     
     /* 链接样式 */
@@ -257,11 +259,11 @@
 </div>
 
 <audio id="bgm" loop>
-    <source src="Neon Circuitry (mp3cut.net).mp3" 输入="audio/mpeg">
+    <source src="Neon Circuitry (mp3cut.net).mp3" type="audio/mpeg">
 </audio>
 
 <audio id="sfx">
-    <source src="click.mp3" 输入="audio/mpeg">
+    <source src="click.mp3" type="audio/mpeg">
 </audio>
 
 <header>
@@ -271,7 +273,7 @@
         
         <button id="audio-btn" onclick="playSFX(); toggleAudio()">[ 🔇 MUTE ]</button>
         
-        <button onclick="playSFX(); window。open('https://github.com/Baka-Wolf/Fengdu_Database'， '_blank')">↗ GITHUB</button>
+        <button onclick="playSFX(); window.open('https://github.com/Baka-Wolf/Fengdu_Database', '_blank')">↗ GITHUB</button>
         
         <button onclick="playSFX(); clearData()" style="color:#555;">× RESET</button>
     </div>
@@ -280,7 +282,7 @@
 <div class="workspace">
     <aside class="sidebar">
         <div class="sidebar-search">
-            <input 输入="text" id="search-input" class="search-input" placeholder="SEARCH_DATABASE..." oninput="searchDocs()">
+            <input type="text" id="search-input" class="search-input" placeholder="SEARCH_DATABASE..." oninput="searchDocs()">
         </div>
         
         <div class="sidebar-header">
@@ -471,16 +473,19 @@
         const targetIndex = docs.findIndex(d => d.id === targetDocId);
         if (draggedIndex > -1 && targetIndex > -1) {
             const [movedDoc] = docs.splice(draggedIndex, 1);
-            docs。splice(targetIndex， 0, movedDoc);
+            /* 修正：docs.splice 逗号错误 */
+            docs.splice(targetIndex, 0, movedDoc);
             renderList();
         }
         this.classList.remove('active-drop'); draggedDocId = null;
     }
 
     function searchDocs() {
-        const query = document。getElementById('search-input')。value。toLowerCase();
+        /* 修正：document.getElementById 点号错误 */
+        const query = document.getElementById('search-input').value.toLowerCase();
         const list = document.getElementById('doc-list');
-        list。innerHTML = '';
+        /* 修正：list.innerHTML 点号错误 */
+        list.innerHTML = '';
         const filteredDocs = docs.filter(doc => doc.title.toLowerCase().includes(query) || doc.content.toLowerCase().includes(query));
         renderList(filteredDocs);
     }
@@ -489,28 +494,35 @@
         currentDocId = id;
         const doc = docs.find(d => d.id === id);
         if (doc) {
-            document.getElementById('doc-title')。value = doc。title;
-            renderMarkdown(doc。content);
+            /* 修正：doc.title 点号错误 */
+            document.getElementById('doc-title').value = doc.title;
+            /* 修正：doc.content 点号错误 */
+            renderMarkdown(doc.content);
         }
         renderList();
     }
 
     function renderMarkdown(content) {
         const preview = document.getElementById('preview-view');
-        preview.innerHTML = marked。parse(content);
-        const elements = preview。children;
+        /* 修正：marked.parse 点号错误 */
+        preview.innerHTML = marked.parse(content);
+        /* 修正：preview.children 点号错误 */
+        const elements = preview.children;
         Array.from(elements).forEach((el, index) => {
             el.style.opacity = '0'; 
             const delay = index * 0.05; 
-            el.style。animationDelay = `${delay}s`;
+            /* 修正：el.style.animationDelay 点号错误 */
+            el.style.animationDelay = `${delay}s`;
             el.classList.add('reveal-anim');
         });
     }
 
     function showStatus(msg) {
-        const el = document。getElementById('status-msg');
+        /* 修正：document.getElementById 点号错误 */
+        const el = document.getElementById('status-msg');
         el.textContent = msg;
-        setTimeout(() => { el。textContent = 'SYSTEM_IDLE'; }, 2000);
+        /* 修正：el.textContent 点号错误 */
+        setTimeout(() => { el.textContent = 'SYSTEM_IDLE'; }, 2000);
     }
 
     function clearData() {
@@ -522,5 +534,3 @@
 </script>
 </body>
 </html>
-
-
