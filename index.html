@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>/// 酆都数据库_V1.9 ///</title>
+<title>/// 酆都数据库_V2.0 ///</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23ff7700%22/></svg>">
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -31,18 +31,82 @@
         overflow: hidden;
         display: flex;
         flex-direction: column;
+        transition: filter 0.3s; /* 平滑过渡效果 */
     }
 
-    /* === 视觉特效 === */
+    /* === 视觉特效：基础扫描线 === */
     .scanlines {
         position: fixed;
         top: 0; left: 0; width: 100%; height: 100%;
         background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.15) 50%);
         background-size: 100% 4px;
         pointer-events: none;
-        z-index: 9999; 
+        z-index: 9998; 
         opacity: 0.6;
+        transition: opacity 0.3s;
     }
+
+    /* === 视觉特效：动态噪点 (Noise) === */
+    .noise-overlay {
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        pointer-events: none;
+        z-index: 9997;
+        opacity: 0.05; /* 默认很淡 */
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='1'/%3E%3C/svg%3E");
+        transition: opacity 0.3s;
+    }
+
+    /* === 视觉特效：摩尔纹 (Moiré) === */
+    .moire-overlay {
+        position: fixed;
+        top: -50%; left: -50%; width: 200%; height: 200%;
+        pointer-events: none;
+        z-index: 9999;
+        background: radial-gradient(circle, transparent 20%, #000 120%),
+                    repeating-radial-gradient(#000 0, #000 2px, transparent 3px, transparent 6px);
+        opacity: 0; /* 默认隐藏 */
+        transform: rotate(0deg);
+        transition: opacity 1s ease;
+    }
+
+    /* === BOOST 激活状态 === */
+    body.boost-active .noise-overlay {
+        opacity: 0.4; /* 噪点大幅增强 */
+        animation: noiseFlicker 0.2s infinite;
+    }
+
+    body.boost-active .scanlines {
+        opacity: 0.9;
+        background-size: 100% 2px; /* 扫描线变密 */
+    }
+    
+    body.boost-active .moire-overlay {
+        opacity: 0.15; /* 摩尔纹显现 */
+        animation: moireRotate 60s linear infinite;
+    }
+
+    body.boost-active {
+        /* 色差偏移 (RGB Split) + 对比度增强 */
+        text-shadow: 2px 0 var(--danger), -2px 0 #00ffff;
+        filter: contrast(1.3) brightness(0.8);
+    }
+
+    @keyframes noiseFlicker {
+        0% { transform: translate(0,0); }
+        10% { transform: translate(-1%, -1%); }
+        20% { transform: translate(1%, 1%); }
+        30% { transform: translate(-2%, 2%); }
+        40% { transform: translate(2%, -2%); }
+        100% { transform: translate(0,0); }
+    }
+
+    @keyframes moireRotate {
+        0% { transform: rotate(0deg) scale(1); }
+        50% { transform: rotate(180deg) scale(1.1); }
+        100% { transform: rotate(360deg) scale(1); }
+    }
+
 
     /* === 模拟登录层 === */
     #login-overlay {
@@ -119,6 +183,15 @@
     .header-controls button.active {
         background: var(--accent-dim); border-color: var(--accent);
         color: var(--accent); box-shadow: 0 0 10px var(--accent-dim);
+    }
+    
+    /* 增强模式按钮样式 */
+    button#boost-btn.active {
+        background: #f00;
+        color: #000;
+        border-color: #f00;
+        box-shadow: 0 0 15px #f00;
+        animation: textFlicker 0.1s infinite;
     }
 
     .workspace { display: flex; flex: 1; overflow: hidden; }
@@ -212,7 +285,6 @@
     }
 
     .reveal-anim {
-        /* 修正：逗号必须是英文 , */
         animation: lineReveal 0.2s cubic-bezier(0.11, 0, 0.5, 0) forwards;
         opacity: 0; 
     }
@@ -227,7 +299,6 @@
     }
     #preview-view code {
         background: #222; color: var(--accent); padding: 2px 5px;
-        /* 修正：逗号必须是英文 , */
         font-family: 'VT323', monospace; border: 1px solid #444;
     }
     
@@ -237,19 +308,12 @@
 
     .hidden { display: none !important; }
 
-    .toggle { display:none; }
-    .text1, .text2 { cursor:pointer; }
-    .toggle ~ .text2 { display:none; }
-    .toggle:checked ~ .text1 { display:none; }
-    .toggle:checked ~ .text2 { display:inline; }
-    
 </style>
 </head>
 <body>
 
 <div class="scanlines"></div>
-
-<div id="login-overlay">
+<div class="noise-overlay"></div> <div class="moire-overlay"></div> <div id="login-overlay">
     <div class="login-box">
         <div class="user-avatar">?</div> 
         <div class="user-name">USER: ■■■■■■■■</div>
@@ -275,7 +339,7 @@
         
         <button onclick="playSFX(); window.open('https://github.com/Baka-Wolf/Fengdu_Database', '_blank')">↗ GITHUB</button>
         
-        <button onclick="playSFX(); clearData()" style="color:#555;">× RESET</button>
+        <button id="boost-btn" onclick="playSFX(); toggleBoost()">[ ⚡ BOOST ]</button>
     </div>
 </header>
 
@@ -332,6 +396,25 @@
         }
     }
 
+    // --- 视觉增强 (Boost) 逻辑 ---
+    let isBoosted = false;
+    function toggleBoost() {
+        isBoosted = !isBoosted;
+        const btn = document.getElementById('boost-btn');
+        const body = document.body;
+        
+        if (isBoosted) {
+            body.classList.add('boost-active');
+            btn.classList.add('active');
+            btn.innerHTML = "[ ⚡ ACTIVE ]";
+            // 播放一个音效更合适，这里复用点击音效
+        } else {
+            body.classList.remove('boost-active');
+            btn.classList.remove('active');
+            btn.innerHTML = "[ ⚡ BOOST ]";
+        }
+    }
+
     // --- 启动序列动画 ---
     function runBootSequence() {
         const overlay = document.getElementById('login-overlay');
@@ -367,10 +450,7 @@
                 setTimeout(() => {
                     overlay.classList.add('slide-up');
                     setTimeout(() => { overlay.style.display = 'none'; }, 800);
-                    
-                    // 登录完成后，尝试自动加载数据
                     fetchDataFile();
-
                 }, 600);
             }, 300);
         }
@@ -388,20 +468,14 @@
     }];
 
     window.onload = function() {
-        // 初始先显示加载状态
         docs = loadingDoc;
         renderList(); 
         selectDoc(docs[0].id);
-
-        // 启动登录动画，动画结束后会调用 fetchDataFile()
         runBootSequence();
     };
 
-    // ★★★ 核心修改：自动读取 JSON 文件 ★★★
     function fetchDataFile() {
         showStatus('FETCHING DATA...');
-        
-        // 尝试读取同级目录下的 'archive_dump.json'
         fetch('archive_dump.json')
             .then(response => {
                 if (!response.ok) {
@@ -415,9 +489,6 @@
                     renderList();
                     selectDoc(docs[0].id);
                     showStatus('ARCHIVE LOADED');
-                    
-                    // 可选：如果要保留排序功能，这里可以检查本地是否有旧的排序记录
-                    // 但作为纯展示页，通常直接读取 JSON 顺序即可
                 } else {
                     throw new Error("Empty or invalid JSON");
                 }
@@ -425,8 +496,6 @@
             .catch(err => {
                 console.error("Data load failed:", err);
                 showStatus('CONNECTION FAILED');
-                
-                // 加载失败时显示的文档
                 docs = [{ 
                     id: 'error_00', 
                     title: 'CONNECTION_ERROR', 
@@ -447,7 +516,6 @@
             li.textContent = doc.title || 'UNNAMED_DATA';
             li.onclick = () => { playSFX(); selectDoc(doc.id); };
             
-            // 依然保留拖拽功能，让用户可以在本次浏览中调整顺序
             li.setAttribute('draggable', 'true');
             li.setAttribute('data-id', doc.id);
             li.addEventListener('dragstart', handleDragStart);
@@ -460,7 +528,6 @@
         });
     }
 
-    // ... 拖放功能保持不变 (略去重复代码，因为逻辑一样) ...
     function handleDragStart(e) { draggedDocId = this.getAttribute('data-id'); e.dataTransfer.effectAllowed = 'move'; this.classList.add('dragging'); }
     function handleDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; document.querySelectorAll('.doc-item').forEach(item => item.classList.remove('active-drop')); this.classList.add('active-drop'); }
     function handleDragLeave() { this.classList.remove('active-drop'); }
@@ -473,7 +540,6 @@
         const targetIndex = docs.findIndex(d => d.id === targetDocId);
         if (draggedIndex > -1 && targetIndex > -1) {
             const [movedDoc] = docs.splice(draggedIndex, 1);
-            /* 修正：docs.splice 逗号错误 */
             docs.splice(targetIndex, 0, movedDoc);
             renderList();
         }
@@ -481,10 +547,8 @@
     }
 
     function searchDocs() {
-        /* 修正：document.getElementById 点号错误 */
         const query = document.getElementById('search-input').value.toLowerCase();
         const list = document.getElementById('doc-list');
-        /* 修正：list.innerHTML 点号错误 */
         list.innerHTML = '';
         const filteredDocs = docs.filter(doc => doc.title.toLowerCase().includes(query) || doc.content.toLowerCase().includes(query));
         renderList(filteredDocs);
@@ -494,9 +558,7 @@
         currentDocId = id;
         const doc = docs.find(d => d.id === id);
         if (doc) {
-            /* 修正：doc.title 点号错误 */
             document.getElementById('doc-title').value = doc.title;
-            /* 修正：doc.content 点号错误 */
             renderMarkdown(doc.content);
         }
         renderList();
@@ -504,32 +566,20 @@
 
     function renderMarkdown(content) {
         const preview = document.getElementById('preview-view');
-        /* 修正：marked.parse 点号错误 */
         preview.innerHTML = marked.parse(content);
-        /* 修正：preview.children 点号错误 */
         const elements = preview.children;
         Array.from(elements).forEach((el, index) => {
             el.style.opacity = '0'; 
             const delay = index * 0.05; 
-            /* 修正：el.style.animationDelay 点号错误 */
             el.style.animationDelay = `${delay}s`;
             el.classList.add('reveal-anim');
         });
     }
 
     function showStatus(msg) {
-        /* 修正：document.getElementById 点号错误 */
         const el = document.getElementById('status-msg');
         el.textContent = msg;
-        /* 修正：el.textContent 点号错误 */
         setTimeout(() => { el.textContent = 'SYSTEM_IDLE'; }, 2000);
-    }
-
-    function clearData() {
-        // 重置仅仅是重新加载原始 JSON
-        if(confirm('RELOAD SYSTEM DATA?')) {
-            fetchDataFile();
-        }
     }
 </script>
 </body>
