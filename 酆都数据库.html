@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>/// Fengdu_Database_V1.8 ///</title>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=VT323&display=swap" rel="stylesheet">
+
+<style>
+    :root {
+        --bg-color: #050505;
+        --sidebar-bg: #0a0a0a;
+        --text-main: #a8b0c0; 
+        --accent: #ff7700;    
+        --accent-dim: rgba(255, 119, 0, 0.15);
+        --border: 1px solid #333;
+        --danger: #ff3333;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+        background-color: var(--bg-color);
+        color: var(--text-main);
+        margin: 0;
+        height: 100vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* === 视觉特效 === */
+    .scanlines {
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.15) 50%);
+        background-size: 100% 4px;
+        pointer-events: none;
+        z-index: 9999; 
+        opacity: 0.6;
+    }
+
+    /* === 模拟登录层 === */
+    #login-overlay {
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background-color: #000;
+        z-index: 5000; 
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        font-family: 'JetBrains Mono', monospace;
+        transition: transform 0.8s cubic-bezier(0.7, 0, 0.3, 1);
+    }
+
+    .login-box {
+        border: 2px solid var(--accent);
+        padding: 40px;
+        width: 350px;
+        background: rgba(10, 10, 10, 0.9);
+        box-shadow: 0 0 20px var(--accent-dim);
+        text-align: center;
+        opacity: 0; 
+        animation: fadeInBox 1s ease-out forwards;
+    }
+
+    @keyframes fadeInBox {
+        0% { opacity: 0; transform: scale(0.95); }
+        100% { opacity: 1; transform: scale(1); }
+    }
+
+    .user-avatar {
+        width: 80px; height: 80px; background: #222;
+        border: 1px solid #444; margin: 0 auto 20px auto;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 2rem; color: #555;
+    }
+
+    .user-name {
+        margin-bottom: 20px; font-size: 0.9rem;
+        color: var(--accent); letter-spacing: 2px;
+    }
+
+    .password-display {
+        background: #111; border: 1px solid #333; height: 35px;
+        width: 100%; margin-bottom: 20px; display: flex;
+        align-items: center; padding: 0 10px; color: var(--accent);
+        font-family: 'VT323', monospace; font-size: 1.5rem; letter-spacing: 3px;
+    }
+
+    .login-status {
+        font-size: 0.75rem; color: #666; height: 20px;
+    }
+
+    .slide-up { transform: translateY(-100%); }
+
+    /* === 顶栏 & 主体 (保持不变) === */
+    header {
+        height: 50px; border-bottom: var(--border); display: flex;
+        align-items: center; padding: 0 20px; justify-content: space-between;
+        background: #000; font-family: 'JetBrains Mono', monospace; z-index: 1000;
+    }
+
+    .brand { color: var(--accent); font-weight: bold; letter-spacing: 2px; text-shadow: 0 0 8px var(--accent-dim); }
+
+    .header-controls button {
+        background: transparent; border: 1px solid #444; color: #888;
+        padding: 5px 12px; cursor: pointer; font-family: 'JetBrains Mono', monospace;
+        font-size: 0.75rem; margin-left: 8px; transition: 0.3s;
+    }
+
+    .header-controls button:hover { border-color: var(--accent); color: var(--accent); }
+    
+    .header-controls button.active {
+        background: var(--accent-dim); border-color: var(--accent);
+        color: var(--accent); box-shadow: 0 0 10px var(--accent-dim);
+    }
+
+    .workspace { display: flex; flex: 1; overflow: hidden; }
+
+    /* 侧边栏 */
+    .sidebar {
+        width: 260px; background: var(--sidebar-bg); border-right: var(--border);
+        display: flex; flex-direction: column; font-family: 'JetBrains Mono', monospace; 
+    }
+    
+    .sidebar-search {
+        padding: 10px 15px;
+        border-bottom: var(--border);
+    }
+
+    .search-input {
+        width: 100%; padding: 8px; background: #111;
+        border: 1px solid #333; color: var(--text-main);
+        font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;
+        outline: none;
+    }
+    .search-input:focus { border-color: var(--accent); }
+
+    .sidebar-header {
+        padding: 15px; border-bottom: var(--border); display: flex;
+        justify-content: space-between; align-items: center; font-size: 0.8rem;
+        color: #666;
+    }
+
+    .add-btn {
+        background: transparent; border: 1px dashed #666; color: #666; cursor: pointer;
+    }
+    .add-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    .doc-list {
+        list-style: none; padding: 0; margin: 0; overflow-y: auto;
+    }
+
+    .doc-item {
+        padding: 12px 15px; border-bottom: 1px solid #1a1a1a;
+        cursor: grab; font-size: 0.85rem; opacity: 0.7; transition: 0.2s;
+    }
+
+    .doc-item:hover { background: #111; opacity: 1; }
+    .doc-item.active {
+        background: rgba(255,255,255,0.05); border-left: 3px solid var(--accent);
+        color: var(--accent); opacity: 1;
+    }
+    
+    /* 拖放视觉反馈 */
+    .doc-item.active-drop { border-top: 2px solid #fff; } 
+    .doc-item.dragging { opacity: 0.4; } 
+
+
+    /* === 主面板 (保持不变) === */
+    .main-panel { flex: 1; display: flex; flex-direction: column; background: var(--bg-color); }
+
+    .toolbar {
+        padding: 10px 30px; border-bottom: var(--border); display: flex;
+        justify-content: space-between; background: #080808;
+    }
+
+    .doc-title-input {
+        background: transparent; border: none; color: #fff;
+        font-family: 'JetBrains Mono', monospace; font-size: 1.1rem;
+        width: 300px; outline: none;
+    }
+
+    .view-toggle-btn {
+        background: var(--accent); color: #000; border: none;
+        padding: 5px 15px; font-weight: bold; cursor: pointer;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .content-area { flex: 1; position: relative; overflow: hidden; }
+
+    textarea#editor {
+        width: 100%; height: 100%; padding: 40px;
+        background: transparent; border: none; color: #ddd;
+        font-family: 'JetBrains Mono', monospace; font-size: 15px;
+        line-height: 1.6; resize: none; outline: none;
+    }
+
+    /* === 预览模式 & 动画增强 (打字流效果) === */
+    #preview-view {
+        width: 100%; height: 100%; padding: 40px 60px;
+        overflow-y: auto; font-family: 'VT323','JetBrains Mono', sans-serif; 
+        font-size: 1.4rem; line-height: 1.5; color: var(--text-main); 
+        text-shadow: 
+            0 0 1px var(--text-main), 
+            1px 0 3px var(--accent),  
+            -1px 0 5px var(--accent-dim); 
+        filter: blur(0.1px); 
+    }
+
+    /* 逐行出现的动画 Keyframes (更像数据流) */
+    @keyframes lineReveal {
+        0% { 
+            opacity: 0; 
+            transform: translateY(3px); /* 轻微上移 */
+            filter: blur(0.5px); /* 轻微模糊 */
+        }
+        100% { 
+            opacity: 1; 
+            transform: translateY(0); 
+            filter: blur(0.1px);
+        }
+    }
+
+    .reveal-anim {
+        animation: lineReveal 0.2s cubic-bezier(0.11, 0, 0.5, 0) forwards;
+        opacity: 0; 
+    }
+
+    #preview-view h1, #preview-view h2, #preview-view h3 {
+        color: var(--accent); text-transform: uppercase; letter-spacing: 1px;
+    }
+    #preview-view h1 { border-bottom: 2px dashed #444; padding-bottom: 10px; }
+    #preview-view blockquote {
+        border-left: 4px solid var(--accent); background: rgba(20, 20, 20, 0.8);
+        color: #888; font-style: normal;
+    }
+    #preview-view code {
+        background: #222; color: var(--accent); padding: 2px 5px;
+        font-family: 'VT323', monospace; border: 1px solid #444;
+    }
+
+    .hidden { display: none !important; }
+
+    .toggle { display:none; }
+    .text1, .text2 { cursor:pointer; }
+    .toggle ~ .text2 { display:none; }
+    .toggle:checked ~ .text1 { display:none; }
+    .toggle:checked ~ .text2 { display:inline; }
+
+</style>
+</head>
+<body>
+
+<div class="scanlines"></div>
+
+<div id="login-overlay">
+    <div class="login-box">
+        <div class="user-avatar">?</div> 
+        <div class="user-name">USER: ■■■■■■■■</div>
+        <div class="password-display" id="pwd-display"></div>
+        <div class="login-status" id="login-status">WAITING FOR INPUT...</div>
+    </div>
+</div>
+
+<audio id="bgm" loop>
+    <source src="Neon Circuitry (mp3cut.net).mp3" type="audio/mpeg">
+</audio>
+
+<audio id="sfx">
+    <source src="click.mp3" type="audio/mpeg">
+</audio>
+
+<header>
+    <div class="brand">/// Fengdu_Database</div>
+    <div class="header-controls">
+        <span id="status-msg" style="color:#444; margin-right:15px; font-size:0.7rem;">SYSTEM_IDLE</span>
+        
+        <button id="audio-btn" onclick="playSFX(); toggleAudio()">[ 🔇 MUTE ]</button>
+        
+        <button onclick="playSFX(); exportData()">↓ EXPORT</button>
+        <button onclick="playSFX(); clearData()" style="color:#555;">× RESET</button>
+    </div>
+</header>
+
+<div class="workspace">
+    <aside class="sidebar">
+        <div class="sidebar-search">
+            <input type="text" id="search-input" class="search-input" placeholder="SEARCH_DATABASE..." oninput="searchDocs()">
+        </div>
+        
+        <div class="sidebar-header">
+            <span>DATABASE_INDEX</span>
+            <button class="add-btn" onclick="playSFX(); createNewDoc()">+</button>
+        </div>
+        <ul class="doc-list" id="doc-list"></ul>
+    </aside>
+
+    <main class="main-panel">
+        <div class="toolbar">
+            <input type="text" id="doc-title" class="doc-title-input" placeholder="UNTITLED_FILE" oninput="updateTitle()">
+            <div>
+                <button onclick="playSFX(); deleteCurrentDoc()" style="background:transparent; border:none; color:#555; cursor:pointer; margin-right:10px; font-family:'JetBrains Mono'">[DEL]</button>
+                <button class="view-toggle-btn" id="toggle-btn" onclick="playSFX(); toggleEditMode()">READ MODE</button>
+            </div>
+        </div>
+
+        <div class="content-area">
+            <div id="edit-view" class="hidden" style="height:100%">
+                <textarea id="editor" placeholder="Input stream data..." oninput="autoSave()"></textarea>
+            </div>
+
+            <div id="preview-view" class="markdown-body"></div>
+        </div>
+    </main>
+</div>
+
+<script>
+    // --- 音频函数 ---
+    const bgm = document.getElementById('bgm');
+    const sfx = document.getElementById('sfx');
+    bgm.volume = 0.4; 
+    sfx.volume = 0.6; 
+
+    function playSFX() {
+        // 重置并播放音效
+        sfx.currentTime = 0;
+        sfx.play().catch(e => console.log("SFX play blocked: ", e));
+    }
+
+    function toggleAudio() {
+        const btn = document.getElementById('audio-btn');
+        if (bgm.paused) {
+            bgm.play().then(() => {
+                btn.innerHTML = "[ 🔊 PLAYING ]";
+                btn.classList.add('active');
+            }).catch(e => {
+                console.log("Audio play failed:", e);
+                // 浏览器限制自动播放时，只切换按钮状态
+            });
+        } else {
+            bgm.pause();
+            btn.innerHTML = "[ 🔇 MUTE ]";
+            btn.classList.remove('active');
+        }
+    }
+
+    // --- 启动序列动画 ---
+    function runBootSequence() {
+        const overlay = document.getElementById('login-overlay');
+        const pwdDisplay = document.getElementById('pwd-display');
+        const status = document.getElementById('login-status');
+        
+        const passwordLength = 8;
+        let currentLen = 0;
+
+        setTimeout(() => {
+            status.innerText = "AUTHENTICATING...";
+            status.style.color = "var(--accent)";
+
+            const typeInterval = setInterval(() => {
+                currentLen++;
+                let dots = "";
+                for(let i=0; i<currentLen; i++) dots += "●";
+                pwdDisplay.innerText = dots;
+
+                if (currentLen >= passwordLength) {
+                    clearInterval(typeInterval);
+                    finishLogin();
+                }
+            }, 100); // 加快打字速度
+
+        }, 800);
+
+        function finishLogin() {
+            setTimeout(() => {
+                status.innerText = "ACCESS GRANTED";
+                status.style.color = "#0f0"; 
+                
+                setTimeout(() => {
+                    overlay.classList.add('slide-up');
+                    
+                    setTimeout(() => {
+                        overlay.style.display = 'none';
+                    }, 800);
+                }, 600);
+            }, 300);
+        }
+    }
+
+    // --- 数据逻辑 ---
+    const defaultDocs = [{
+        id: 'init_00',
+        title: 'Manifesto_2084',
+        content: '# The New Order\n\n> "Chaos is a ladder."\n\n## 现状报告\n大火仍在燃烧 (The Fire Rises)。天空被永久的工业烟雾笼罩，呈现出电视雪花般的死灰色。\n\n### 关键目标\n1.  **控制节点**：夺取北区信号塔。\n2.  **数据清洗**：抹除旧时代的记录。\n\n在此输入你的世界观...'
+    }];
+
+    let docs = [];
+    let currentDocId = null;
+    let isEditing = false; 
+
+    let draggedDocId = null; 
+
+    window.onload = function() {
+        loadFromStorage();
+        if (docs.length === 0) {
+            docs = JSON.parse(JSON.stringify(defaultDocs));
+            saveToStorage();
+        }
+        
+        isEditing = false; 
+        
+        // 确保列表已渲染，以便 selectDoc 能找到第一个文档
+        renderList(); 
+        if (docs.length > 0) {
+             selectDoc(docs[0].id);
+        }
+        updateViewMode();
+
+        runBootSequence();
+    };
+
+    function loadFromStorage() {
+        const data = localStorage.getItem('world_archive_v1.5'); 
+        if (data) docs = JSON.parse(data);
+    }
+
+    function saveToStorage() {
+        localStorage.setItem('world_archive_v1.5', JSON.stringify(docs));
+        showStatus('SAVED');
+    }
+    
+    // --- 搜索功能 ---
+    function searchDocs() {
+        const query = document.getElementById('search-input').value.toLowerCase();
+        const list = document.getElementById('doc-list');
+        list.innerHTML = '';
+        
+        const filteredDocs = docs.filter(doc => 
+            doc.title.toLowerCase().includes(query) || 
+            doc.content.toLowerCase().includes(query)
+        );
+        
+        renderList(filteredDocs);
+    }
+
+    // --- 渲染列表 & 拖放功能 ---
+    function renderList(listToRender = docs) {
+        const list = document.getElementById('doc-list');
+        list.innerHTML = '';
+        
+        // 移除搜索高亮和拖放事件，重新绑定
+        list.querySelectorAll('.doc-item').forEach(item => {
+            item.removeEventListener('dragstart', handleDragStart);
+            item.removeEventListener('dragover', handleDragOver);
+            item.removeEventListener('drop', handleDrop);
+            item.removeEventListener('dragleave', handleDragLeave);
+        });
+
+        listToRender.forEach(doc => {
+            const li = document.createElement('li');
+            li.className = `doc-item ${doc.id === currentDocId ? 'active' : ''}`;
+            li.textContent = doc.title || 'UNNAMED_DATA';
+            li.onclick = () => { playSFX(); selectDoc(doc.id); };
+            
+            // 拖放属性
+            li.setAttribute('draggable', 'true');
+            li.setAttribute('data-id', doc.id);
+            li.addEventListener('dragstart', handleDragStart);
+            li.addEventListener('dragover', handleDragOver);
+            li.addEventListener('drop', handleDrop);
+            li.addEventListener('dragleave', handleDragLeave);
+            li.addEventListener('dragend', handleDragEnd);
+
+            list.appendChild(li);
+        });
+    }
+
+    // 拖放事件处理
+    function handleDragStart(e) {
+        draggedDocId = this.getAttribute('data-id');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', draggedDocId);
+        this.classList.add('dragging');
+    }
+
+    function handleDragOver(e) {
+        e.preventDefault(); 
+        e.dataTransfer.dropEffect = 'move';
+        // 添加视觉反馈
+        document.querySelectorAll('.doc-item').forEach(item => item.classList.remove('active-drop'));
+        this.classList.add('active-drop');
+    }
+    
+    function handleDragLeave() {
+        this.classList.remove('active-drop');
+    }
+
+    function handleDragEnd() {
+        document.querySelectorAll('.doc-item').forEach(item => {
+            item.classList.remove('active-drop', 'dragging');
+        });
+    }
+
+    function handleDrop(e) {
+        e.preventDefault();
+        playSFX(); 
+        const targetDocId = this.getAttribute('data-id');
+        
+        if (draggedDocId === targetDocId) return;
+
+        const draggedIndex = docs.findIndex(d => d.id === draggedDocId);
+        const targetIndex = docs.findIndex(d => d.id === targetDocId);
+
+        if (draggedIndex > -1 && targetIndex > -1) {
+            // 移动数组元素
+            const [movedDoc] = docs.splice(draggedIndex, 1);
+            docs.splice(targetIndex, 0, movedDoc);
+            saveToStorage();
+            renderList();
+        }
+        
+        this.classList.remove('active-drop');
+        draggedDocId = null;
+    }
+
+
+    function selectDoc(id) {
+        currentDocId = id;
+        const doc = docs.find(d => d.id === id);
+        document.getElementById('doc-title').value = doc.title;
+        document.getElementById('editor').value = doc.content;
+        
+        if (!isEditing) {
+            renderMarkdown(doc.content);
+        }
+        
+        renderList();
+    }
+
+    function createNewDoc() {
+        const newDoc = {
+            id: 'doc_' + Date.now(),
+            title: 'New_Entry',
+            content: '# Title\n...'
+        };
+        docs.unshift(newDoc); // 插入到顶部
+        saveToStorage();
+        renderList();
+        selectDoc(newDoc.id);
+        if(!isEditing) toggleEditMode();
+    }
+
+    function deleteCurrentDoc() {
+        if(confirm('PURGE DATA?')) {
+            docs = docs.filter(d => d.id !== currentDocId);
+            if(docs.length === 0) createNewDoc();
+            saveToStorage();
+            renderList();
+            selectDoc(docs[0].id);
+        }
+    }
+
+    function toggleEditMode() {
+        isEditing = !isEditing;
+        updateViewMode();
+    }
+
+    function updateViewMode() {
+        const editView = document.getElementById('edit-view');
+        const previewView = document.getElementById('preview-view');
+        const btn = document.getElementById('toggle-btn');
+        const titleInput = document.getElementById('doc-title');
+
+        if (isEditing) {
+            editView.classList.remove('hidden');
+            previewView.classList.add('hidden');
+            btn.textContent = "[ SWITCH TO VIEW ]";
+            btn.style.background = "#333";
+            btn.style.color = "#fff";
+            titleInput.readOnly = false;
+        } else {
+            editView.classList.add('hidden');
+            previewView.classList.remove('hidden');
+            btn.textContent = "[ EDIT MODE ]";
+            btn.style.background = "var(--accent)";
+            btn.style.color = "#000";
+            titleInput.readOnly = true; 
+            
+            const content = document.getElementById('editor').value;
+            renderMarkdown(content);
+        }
+    }
+
+    // --- 打字流动画 (高速逐行加载) ---
+    function renderMarkdown(content) {
+        const preview = document.getElementById('preview-view');
+        preview.innerHTML = marked.parse(content);
+
+        const elements = preview.children;
+        Array.from(elements).forEach((el, index) => {
+            el.style.opacity = '0'; 
+            // 间隔 50ms (0.05s) 模拟高速打字/数据流
+            const delay = index * 0.05; 
+            el.style.animationDelay = `${delay}s`;
+            el.classList.add('reveal-anim');
+        });
+    }
+    
+    // --- 其他工具函数 (保持不变) ---
+
+    function updateTitle() {
+        const newTitle = document.getElementById('doc-title').value;
+        const doc = docs.find(d => d.id === currentDocId);
+        if (doc) {
+            doc.title = newTitle;
+            renderList();
+            saveToStorage();
+        }
+    }
+
+    function autoSave() {
+        const newContent = document.getElementById('editor').value;
+        const doc = docs.find(d => d.id === currentDocId);
+        if (doc) {
+            doc.content = newContent;
+            clearTimeout(window.saveTimeout);
+            window.saveTimeout = setTimeout(saveToStorage, 1000);
+            showStatus('WRITING...');
+        }
+    }
+
+    function showStatus(msg) {
+        const el = document.getElementById('status-msg');
+        el.textContent = msg;
+        setTimeout(() => { el.textContent = 'SYSTEM_IDLE'; }, 2000);
+    }
+
+    function exportData() {
+        const dataStr = JSON.stringify(docs, null, 2);
+        const blob = new Blob([dataStr], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = "archive_dump.json";
+        a.click();
+    }
+    
+    function clearData() {
+        if(confirm('WIPE MEMORY?')) {
+            localStorage.removeItem('world_archive_v1.5');
+            location.reload();
+        }
+    }
+</script>
+</body>
+</html>
