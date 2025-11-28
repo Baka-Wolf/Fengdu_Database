@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>/// 酆都数据库_V2.0 ///</title>
+<title>/// 酆都数据库_V2.2 ///</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23ff7700%22/></svg>">
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -342,6 +342,8 @@
         <span id="status-msg" style="color:#444; margin-right:15px; font-size:0.7rem;">SYSTEM_IDLE</span>
         
         <button id="audio-btn" onclick="playSFX(); toggleAudio()">[ 🔇 MUTE ]</button>
+
+        <button onclick="readExternalArchive()" style="color:var(--accent); border-color:var(--accent);">↑ READ ARCHIVE</button>
         
         <button onclick="playSFX(); window.open('https://github.com/Baka-Wolf/Fengdu_Database', '_blank')">↗ GITHUB</button>
         
@@ -587,7 +589,45 @@
         el.textContent = msg;
         setTimeout(() => { el.textContent = 'SYSTEM_IDLE'; }, 2000);
     }
+
+    // --- 新增：读取外部 JSON 文件并更新内存和本地存储 ---
+function readExternalArchive() {
+    showStatus('FETCHING DATA...');
+    
+    // 尝试读取同级目录下的 'archive_dump.json'
+    fetch('archive_dump.json')
+        .then(response => {
+            if (!response.ok) {
+                // 如果文件不存在或无法访问，抛出错误
+                throw new Error("HTTP error " + response.status + ". File not found or inaccessible.");
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (Array.isArray(data) && data.length > 0) {
+                docs = data;
+                saveToStorage(); // 覆盖本地存储
+                renderList();
+                
+                // 尝试保持当前文档选中，若文件已不存在则选中第一个
+                const newCurrentDoc = docs.find(d => d.id === currentDocId);
+                if (!newCurrentDoc) {
+                    selectDoc(docs[0].id);
+                } else {
+                    selectDoc(currentDocId); 
+                }
+                showStatus('ARCHIVE LOADED');
+                alert('Archive loaded successfully and local data has been updated!');
+            } else {
+                throw new Error("Empty or invalid JSON data in file.");
+            }
+        })
+        .catch(err => {
+            console.error("Data load failed:", err);
+            showStatus(`READ FAILED`);
+            alert(`Error reading archive_dump.json. Make sure the file exists and is valid JSON. Error: ${err.message}`);
+        });
+}
 </script>
 </body>
 </html>
-
